@@ -9,8 +9,6 @@ Store the downloaded data in 'image/' directory.
 
 You also need to download VGGNet19 model in `data/` directory.
 
-A data folder has to be downloaded from https://drive.google.com/drive/folders/10PHUurBmKUa4pLHT6yOKw4k4rg30DYHh?usp=sharing
-
 You need the following python libraries installed in your system to run the code.
 
 numpy
