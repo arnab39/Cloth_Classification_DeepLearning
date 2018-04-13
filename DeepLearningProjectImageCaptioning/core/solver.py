@@ -1,6 +1,6 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
-import skimage.transform
+from skimage.transform import pyramid_expand
 import numpy as np
 import time
 import os
@@ -12,27 +12,6 @@ from bleu import evaluate
 
 class CaptioningSolver(object):
     def __init__(self, model, data, val_data, **kwargs):
-        """
-        Required Arguments:
-            - model: Show Attend and Tell caption generating model
-            - data: Training data; dictionary with the following keys:
-                - features: Feature vectors of shape (82783, 196, 512)
-                - file_names: Image file names of shape (82783, )
-                - captions: Captions of shape (400000, 17)
-                - image_idxs: Indices for mapping caption to image of shape (400000, )
-                - word_to_idx: Mapping dictionary from word to index
-            - val_data: validation data; for print out BLEU scores for each epoch.
-        Optional Arguments:
-            - n_epochs: The number of epochs to run for training.
-            - batch_size: Mini batch size.
-            - update_rule: A string giving the name of an update rule
-            - learning_rate: Learning rate; default value is 0.01.
-            - print_every: Integer; training losses will be printed every print_every iterations.
-            - save_every: Integer; model variables will be saved every save_every epoch.
-            - pretrained_model: String; pretrained model path
-            - model_path: String; model path for saving
-            - test_model: String; model path for test
-        """
 
         self.model = model
         self.data = data
@@ -64,9 +43,6 @@ class CaptioningSolver(object):
 
 
     def train(self):
-        # train/val dataset
-        # Changed this because I keep less features than captions, see prepro
-        # n_examples = self.data['captions'].shape[0]
         n_examples = self.data['features'].shape[0]
         n_iters_per_epoch = int(np.ceil(float(n_examples)/self.batch_size))
         features = self.data['features']
@@ -76,7 +52,6 @@ class CaptioningSolver(object):
         n_iters_val = int(np.ceil(float(val_features.shape[0])/self.batch_size))
 
         # build graphs for training model and sampling captions
-        # This scope fixed things!!
         with tf.variable_scope(tf.get_variable_scope()):
             loss = self.model.build_model()
             tf.get_variable_scope().reuse_variables()
@@ -89,35 +64,20 @@ class CaptioningSolver(object):
             grads_and_vars = list(zip(grads, tf.trainable_variables()))
             train_op = optimizer.apply_gradients(grads_and_vars=grads_and_vars)
 
-        # summary op
-        # tf.scalar_summary('batch_loss', loss)
-        tf.summary.scalar('batch_loss', loss)
-        for var in tf.trainable_variables():
-            #tf.histogram_summary(var.op.name, var)
-            tf.summary.histogram(var.op.name, var)
-        for grad, var in grads_and_vars:
-            #tf.histogram_summary(var.op.name+'/gradient', grad)
-            tf.summary.histogram(var.op.name+'/gradient', grad)
-
-        #summary_op = tf.merge_all_summaries()
-        summary_op = tf.summary.merge_all()
-
-        print "The number of epoch: %d" %self.n_epochs
-        print "Data size: %d" %n_examples
-        print "Batch size: %d" %self.batch_size
-        print "Iterations per epoch: %d" %n_iters_per_epoch
+        print ("The number of epoch: %d" %self.n_epochs)
+        print ("Data size: %d" %n_examples)
+        print ("Batch size: %d" %self.batch_size)
+        print ("Iterations per epoch: %d" %n_iters_per_epoch)
 
         config = tf.ConfigProto(allow_soft_placement = True)
         #config.gpu_options.per_process_gpu_memory_fraction=0.9
         config.gpu_options.allow_growth = True
         with tf.Session(config=config) as sess:
             tf.global_variables_initializer().run()
-            #summary_writer = tf.train.SummaryWriter(self.log_path, graph=tf.get_default_graph())
-            summary_writer = tf.summary.FileWriter(self.log_path, graph=tf.get_default_graph())
             saver = tf.train.Saver(max_to_keep=40)
 
             if self.pretrained_model is not None:
-                print "Start training with pretrained Model.."
+                print ("Start training with pretrained Model..")
                 saver.restore(sess, self.pretrained_model)
 
             prev_loss = -1
@@ -137,24 +97,19 @@ class CaptioningSolver(object):
                     _, l = sess.run([train_op, loss], feed_dict)
                     curr_loss += l
 
-                    # write summary for tensorboard visualization
-                    if i % 10 == 0:
-                        summary = sess.run(summary_op, feed_dict)
-                        summary_writer.add_summary(summary, e*n_iters_per_epoch + i)
-
                     if (i+1) % self.print_every == 0:
-                        print "\nTrain loss at epoch %d & iteration %d (mini-batch): %.5f" %(e+1, i+1, l)
+                        print ("\nTrain loss at epoch %d & iteration %d (mini-batch): %.5f" %(e+1, i+1, l))
                         ground_truths = captions[image_idxs == image_idxs_batch[0]]
                         decoded = decode_captions(ground_truths, self.model.idx_to_word)
                         for j, gt in enumerate(decoded):
-                            print "Ground truth %d: %s" %(j+1, gt)
+                            print ("Ground truth %d: %s" %(j+1, gt))
                         gen_caps = sess.run(generated_captions, feed_dict)
                         decoded = decode_captions(gen_caps, self.model.idx_to_word)
-                        print "Generated caption: %s\n" %decoded[0]
+                        print ("Generated caption: %s\n" %decoded[0])
 
-                print "Previous epoch loss: ", prev_loss
-                print "Current epoch loss: ", curr_loss
-                print "Elapsed time: ", time.time() - start_t
+                print ("Previous epoch loss: ", prev_loss)
+                print ("Current epoch loss: ", curr_loss)
+                print ("Elapsed time: ", time.time() - start_t)
                 prev_loss = curr_loss
                 curr_loss = 0
 
@@ -175,22 +130,10 @@ class CaptioningSolver(object):
                 # save model's parameters
                 if (e+1) % self.save_every == 0:
                     saver.save(sess, os.path.join(self.model_path, 'model'), global_step=e+1)
-                    print "model-%s saved." %(e+1)
+                    print ("model-%s saved." %(e+1))
 
 
     def test(self, data, split='train', attention_visualization=True, save_sampled_captions=True):
-        '''
-        Args:
-            - data: dictionary with the following keys:
-            - features: Feature vectors of shape (5000, 196, 512)
-            - file_names: Image file names of shape (5000, )
-            - captions: Captions of shape (24210, 17)
-            - image_idxs: Indices for mapping caption to image of shape (24210, )
-            - features_to_captions: Mapping feature to captions (5000, 4~5)
-            - split: 'train', 'val' or 'test'
-            - attention_visualization: If True, visualize attention weights with images for each sampled word. (ipthon notebook)
-            - save_sampled_captions: If True, save sampled captions to pkl file for computing BLEU scores.
-        '''
 
         features = data['features']
 
@@ -209,7 +152,7 @@ class CaptioningSolver(object):
 
             if attention_visualization:
                 for n in range(10):
-                    print "Sampled Caption: %s" %decoded[n]
+                    print ("Sampled Caption: %s" %decoded[n])
 
                     # Plot original image
                     img = ndimage.imread(image_files[n])
@@ -226,7 +169,7 @@ class CaptioningSolver(object):
                         plt.text(0, 1, '%s(%.2f)'%(words[t], bts[n,t]) , color='black', backgroundcolor='white', fontsize=8)
                         plt.imshow(img)
                         alp_curr = alps[n,t,:].reshape(14,14)
-                        alp_img = skimage.transform.pyramid_expand(alp_curr, upscale=16, sigma=20)
+                        alp_img = pyramid_expand(alp_curr, upscale=16, sigma=20)
                         plt.imshow(alp_img, alpha=0.85)
                         plt.axis('off')
                     plt.show()

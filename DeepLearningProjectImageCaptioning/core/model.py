@@ -1,15 +1,3 @@
-# =========================================================================================
-# Implementation of "Show, Attend and Tell: Neural Caption Generator With Visual Attention".
-# There are some notations.
-# N is batch size.
-# L is spacial size of feature vector (196).
-# D is dimension of image feature vector (512).
-# T is the number of time step which is equal to caption's length-1 (16).
-# V is vocabulary size (about 10000).
-# M is dimension of word vector which is embedding size (default is 512).
-# H is dimension of hidden state (default is 1024).
-# =========================================================================================
-
 from __future__ import division
 
 import tensorflow as tf
@@ -18,19 +6,6 @@ import tensorflow as tf
 class CaptionGenerator(object):
     def __init__(self, word_to_idx, dim_feature=[196, 512], dim_embed=512, dim_hidden=1024, n_time_step=16,
                   prev2out=True, ctx2out=True, alpha_c=0.0, selector=True, dropout=True):
-        """
-        Args:
-            word_to_idx: word-to-index mapping dictionary.
-            dim_feature: (optional) Dimension of vggnet19 conv5_3 feature vectors.
-            dim_embed: (optional) Dimension of word embedding.
-            dim_hidden: (optional) Dimension of all hidden state.
-            n_time_step: (optional) Time step size of LSTM.
-            prev2out: (optional) previously generated word to hidden state. (see Eq (7) for explanation)
-            ctx2out: (optional) context to hidden state (see Eq (7) for explanation)
-            alpha_c: (optional) Doubly stochastic regularization coefficient. (see Section (4.2.1) for explanation)
-            selector: (optional) gating scalar for context vector. (see Section (4.2.1) for explanation)
-            dropout: (optional) If true then dropout layer is added.
-        """
 
         self.word_to_idx = word_to_idx
         self.idx_to_word = {i: w for w, i in word_to_idx.iteritems()}
@@ -128,13 +103,8 @@ class CaptionGenerator(object):
             return out_logits
 
     def _batch_norm(self, x, mode='train', name=None):
-        return tf.contrib.layers.batch_norm(inputs=x,
-                                            decay=0.95,
-                                            center=True,
-                                            scale=True,
-                                            is_training=(mode=='train'),
-                                            updates_collections=None,
-                                            scope=(name+'batch_norm'))
+        return tf.contrib.layers.batch_norm(inputs=x,decay=0.95,center=True,scale=True,is_training=(mode=='train'),
+                                            updates_collections=None,scope=(name+'batch_norm'))
 
     def build_model(self):
         features = self.features
@@ -155,7 +125,7 @@ class CaptionGenerator(object):
 
         loss = 0.0
         alpha_list = []
-        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=self.H)
+        lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=self.H)
 
         for t in range(self.T):
             context, alpha = self._attention_layer(features, features_proj, h, reuse=(t!=0))
@@ -191,7 +161,7 @@ class CaptionGenerator(object):
         sampled_word_list = []
         alpha_list = []
         beta_list = []
-        lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=self.H)
+        lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=self.H)
 
         for t in range(max_len):
             if t == 0:
