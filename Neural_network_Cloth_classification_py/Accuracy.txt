@@ -1,0 +1,3 @@
+Accuracy: 89.35 (With the hyperparameters given in the code)
+
+Number of hidden units is kept as (input_size+output_size)/2.
