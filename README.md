@@ -20,4 +20,4 @@ are mentioned below.
 
 Enter each folder to run cloth classification using different techniques. The first folder has the Sequence model based classification while the next two folder has simple neural network based classification using tensorflow and using just python(No tensorflow libraries allowed). 
 
-The folder has two basic codes for Regression and kNN implementation using jupyter notebook. 
+The folder also has two basic codes for Regression and kNN classifier using jupyter notebook. 
