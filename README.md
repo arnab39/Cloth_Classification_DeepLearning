@@ -1,4 +1,4 @@
-# Deep-Learning
+# Cloth Classification using Deep Learning 
 This library contains three different implementation of cloth classification.
 
 Link to cloth classification data: https://drive.google.com/open?id=1EtWSWBtrIcIIx5rUTSRAIgJd6Vb8rvwW
