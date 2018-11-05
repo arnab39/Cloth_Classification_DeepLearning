@@ -1,5 +1,5 @@
 # Cloth Classification using Deep Learning 
-This library contains three different implementation of cloth classification.
+This repository contains three different implementation of cloth classification.
 
 Link to cloth classification data: https://drive.google.com/open?id=1EtWSWBtrIcIIx5rUTSRAIgJd6Vb8rvwW
 
@@ -18,6 +18,6 @@ pixel has a single intensity value which is an integer between 0 and 255.
 are mentioned below.
 <br/>
 
-Enter each folder to run cloth classification using different techniques. The first folder has the Sequence model based classification while the next two folder has simple neural network based classification using tensorflow and using just python(No tensorflow libraries allowed). 
+Enter each folder to run cloth classification using different techniques. The first folder has the Sequence model based classification while the next two folder has simple feed-forward neural network based classification using both tensorflow and only python(No tensorflow libraries allowed). 
 
 The folder also has two basic codes for Regression and kNN classifier using jupyter notebook. 
